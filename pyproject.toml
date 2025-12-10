@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.28.1",
-    "pdit",
     "pydantic>=2.12.5",
     "python-dotenv>=1.2.1",
     "typer>=0.20.0",
@@ -16,5 +15,3 @@ dependencies = [
 [project.scripts]
 issuerizer = "issuerizer.main:app"
 
-[tool.uv.sources]
-pdit = { git = "https://github.com/vangberg/pdit", rev = "dist" }
