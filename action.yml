@@ -1,0 +1,43 @@
+name: 'Issuerizer'
+description: 'Summarize GitHub issues using LLMs and update them.'
+branding:
+  icon: 'file-text'
+  color: 'blue'
+inputs:
+  issue-query:
+    description: 'The issue URL (e.g., https://github.com/owner/repo/issues/1) or shorthand (owner/repo#1) to summarize.'
+    required: true
+  update:
+    description: 'Set to "true" to automatically update the issue body with the generated summary.'
+    required: false
+    default: 'false'
+  anthropic-api-key:
+    description: 'Your Anthropic API Key.'
+    required: true
+  github-token:
+    description: 'GitHub Token with write access to issues.'
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install Issuerizer
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+
+    - name: Run Issuerizer
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        ARGS=""
+        if [ "${{ inputs.update }}" == "true" ]; then
+          ARGS="--update"
+        fi
+        issuerizer "${{ inputs.issue-query }}" $ARGS
