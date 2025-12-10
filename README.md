@@ -46,7 +46,7 @@ jobs:
       issues: write
     steps:
       - name: Run Issuerizer
-        uses: harryvangberg/issuerizer@main
+        uses: vangberg/issuerizer@main
         with:
           # Dynamically get the issue number from the event
           issue-query: "${{ github.repository }}#${{ github.event.issue.number }}"
