@@ -1,10 +1,8 @@
 # Issuerizer
 
-Issuerizer takes a GitHub issue and creates a summary, which can be used as the body of the
-issue itself. The summary serves as the entrypoint to the issue, and can contain quotes and
-direct links to comments. Since the summary is intended as the body of the issue, all user-
-generated content must be posted as comments, and the initial issue should be created with
-an empty body.
+Issuerizer is a CLI tool and GitHub Action designed to provide an 'entrypoint summary' for GitHub issues. It leverages large language models (LLMs) to distill complex issue discussions and comments into a concise, structured summary, which can optionally be used to update the issue's body. The generated summary aims to capture key discussion points, decisions, and action items, serving as a clean starting point for anyone looking to engage with the issue.
+
+**WARNING / DISCLAIMER:** This project was developed through 'vibe coding' and is provided as-is, without any warranty, express or implied. The author(s) take no responsibility for any issues, errors, or consequences arising from its use. Use at your own risk, and always back up your data before using any automated tools that modify your repositories.
 
 ## Authentication
 
