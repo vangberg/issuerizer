@@ -65,6 +65,30 @@ class GitHubClient:
             
             return issue
 
+    def get_readme(self, owner: str, repo: str) -> Optional[str]:
+        """
+        Fetches the README.md content for the specified repository.
+        Returns None if not found or on error.
+        """
+        url = f"https://api.github.com/repos/{owner}/{repo}/readme"
+        headers = self.headers.copy()
+        headers["Accept"] = "application/vnd.github.v3.raw"
+        
+        with httpx.Client() as client:
+            try:
+                response = client.get(url, headers=headers)
+                response.raise_for_status()
+                return response.text
+            except httpx.HTTPStatusError as e:
+                # 404 Not Found is common if no README exists
+                if e.response.status_code == 404:
+                    return None
+                print(f"Error fetching README: {e}")
+                return None
+            except Exception as e:
+                print(f"Error fetching README: {e}")
+                return None
+
     def update_issue(self, owner: str, repo: str, issue_number: int, new_body: str) -> None:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
         headers = self.headers.copy()

@@ -1,8 +1,9 @@
 import os
 import anthropic
+from typing import Optional
 from issuerizer.github import Issue
 
-def get_summary(issue: Issue) -> str:
+def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
     """
     Generates a summary of the provided GitHub issue using the Anthropic API.
     """
@@ -14,17 +15,13 @@ def get_summary(issue: Issue) -> str:
 
     # Construct the prompt
     prompt = f"""
-    You are an expert technical assistant tasked with summarizing a GitHub issue discussion.
-    The goal is to create a "clean" entrypoint summary that captures the current consensus, 
-    open questions, decisions made, and key action items.
+    You are an expert technical editor summarizing a GitHub issue discussion.
+    Produce a succinct, academic-style review of the conversation.
 
-    CRITICAL REQUIREMENT:
-    You MUST cite your sources. Every key claim, decision, or quote in your summary must be 
-    linked back to the specific comment URL where it originated. 
-    Use markdown links like this: [comment by username](url).
-    
-    Ignore simple "+1" or "me too" comments unless they indicate significant community support for a specific approach.
-    Focus on the technical details and the flow of the conversation.
+    CRITICAL REQUIREMENTS:
+    1. **Style**: EXTREMELY concise, dense, and objective. Avoid ALL fluff. Be telegraphic.
+    2. **Citations**: Use inline markdown links for every claim, e.g., "The proposed API changes [user1](url) were debated, with concerns raised about backward compatibility [user2](url), [user3](url)."
+    3. **Content**: Capture the core problem, proposed solutions, consensus (or lack thereof), and next steps.
 
     Title: {issue.title}
     Author: {issue.user.login}
@@ -33,8 +30,13 @@ def get_summary(issue: Issue) -> str:
     
     Issue Body:
     {issue.body or "(No body)"}
-    
-    Comments:
+    """
+
+    if readme_content:
+        prompt += f"\n\nProject README:\n{readme_content[:10000]}... (truncated if too long)\n"
+
+    prompt += """
+    \nComments:
     """
     
     for comment in issue.comments_list:
@@ -42,18 +44,16 @@ def get_summary(issue: Issue) -> str:
         prompt += f"{comment.body}\\n"
 
     prompt += """
-    \nPlease provide a concise summary in Markdown, using an outline or nested list style, with fewer main headlines.
-    Focus on being brief and to the point. Include the following consolidated sections:
-    
-    ### Summary of Discussion
-    
-    *   **Issue Overview**: A brief, one-paragraph explanation of the issue/feature request.
-    *   **Key Points & Decisions**:
-        *   Summarize the main arguments, technical details, and any decisions made. Cite sources!
-        *   Use a nested list if appropriate for clarity.
-    *   **Action Items/Next Steps**:
-        *   List any remaining tasks or next steps identified. Cite sources!
-        *   Use a nested list if appropriate.
+    \nProduce the summary in Markdown. Structure it as follows:
+
+    ### Executive Summary
+    (Maximum 2-3 sentences. Ultra-dense summary of the issue, key debates, and current status, heavily cited.)
+
+    ### Key Technical Points
+    *   (Short, single-line bullet points for major technical arguments or decisions. Use inline citations profusely.)
+
+    ### Action Items
+    *   (Concise list of next steps or open tasks, with citations.)
     """
 
     message = client.messages.create(

@@ -51,6 +51,7 @@ def summarize(
         
         with console.status(f"[bold green]Fetching issue #{issue_number} from {owner}/{repo}..."):
             issue = client.get_issue(owner, repo, issue_number)
+            readme_content = client.get_readme(owner, repo)
         
         console.print(f"[bold blue]Title:[/bold blue] {issue.title}")
         console.print(f"[bold blue]State:[/bold blue] {issue.state}")
@@ -58,10 +59,14 @@ def summarize(
         console.print(f"[bold blue]Created:[/bold blue] {issue.created_at}")
         console.print(f"[bold blue]Link:[/bold blue] {issue.html_url}")
         console.print(f"[bold blue]Comments:[/bold blue] {len(issue.comments_list)}")
+        if readme_content:
+            console.print(f"[bold blue]README:[/bold blue] Found ({len(readme_content)} chars)")
+        else:
+            console.print(f"[bold blue]README:[/bold blue] Not found")
         
         console.print("\n[bold]Generating Summary...[/bold]")
         try:
-            summary = get_summary(issue)
+            summary = get_summary(issue, readme_content)
             console.print("\n[bold]--- AI Summary ---[/bold]\n")
             console.print(Markdown(summary))
 
@@ -80,12 +85,7 @@ def summarize(
 
         except ValueError as e:
              console.print(f"[yellow]Warning: Skipping AI summary ({e})[/yellow]")
-             # Fallback to original body display if no API key
-             console.print("\n[bold]Issue Body:[/bold]")
-             if issue.body:
-                console.print(Markdown(issue.body))
-             else:
-                console.print("(No body)")
+             raise
 
 
 
