@@ -1,0 +1,92 @@
+import typer
+import re
+import sys
+from rich.console import Console
+from rich.markdown import Markdown
+from urllib.parse import urlparse
+from issuerizer.github import GitHubClient
+from issuerizer.llm import get_summary
+
+app = typer.Typer()
+console = Console()
+
+def parse_issue_query(query: str):
+    """
+    Parses a GitHub issue URL or shorthand string (owner/repo#number).
+    Returns (owner, repo, issue_number).
+    """
+    # Try URL
+    if query.startswith("http"):
+        parsed = urlparse(query)
+        # path: /owner/repo/issues/number
+        parts = parsed.path.strip("/").split("/")
+        if len(parts) >= 4 and parts[2] == "issues":
+            return parts[0], parts[1], int(parts[3])
+            
+    # Try owner/repo#number
+    match = re.match(r"^([^/]+)/([^/]+)#(\d+)$", query)
+    if match:
+        return match.group(1), match.group(2), int(match.group(3))
+    
+    # Try owner/repo issue_number (space separated, handled by typer usually but here query is one string?)
+    # If the user provides arguments like "owner repo number", typer handles that if we define args.
+    # But we want a single entrypoint.
+    
+    raise ValueError(f"Could not parse issue query: '{query}'. Expected URL or 'owner/repo#number'.")
+
+@app.command()
+def summarize(
+    issue_query: str,
+    update: bool = typer.Option(False, "--update", "-u", help="Update the GitHub issue body with the generated summary.")
+):
+    """
+    Fetch and summarize a GitHub issue.
+    Accepts a URL (e.g., https://github.com/owner/repo/issues/1)
+    or a shorthand string (e.g., owner/repo#1).
+    """
+    client = GitHubClient()
+    try:
+        owner, repo, issue_number = parse_issue_query(issue_query)
+        
+        with console.status(f"[bold green]Fetching issue #{issue_number} from {owner}/{repo}..."):
+            issue = client.get_issue(owner, repo, issue_number)
+        
+        console.print(f"[bold blue]Title:[/bold blue] {issue.title}")
+        console.print(f"[bold blue]State:[/bold blue] {issue.state}")
+        console.print(f"[bold blue]Author:[/bold blue] {issue.user.login}")
+        console.print(f"[bold blue]Created:[/bold blue] {issue.created_at}")
+        console.print(f"[bold blue]Link:[/bold blue] {issue.html_url}")
+        console.print(f"[bold blue]Comments:[/bold blue] {len(issue.comments_list)}")
+        
+        console.print("\n[bold]Generating Summary...[/bold]")
+        try:
+            summary = get_summary(issue)
+            console.print("\n[bold]--- AI Summary ---[/bold]\n")
+            console.print(Markdown(summary))
+
+            if update:
+                try:
+                    with console.status(f"[bold green]Updating issue #{issue_number} in {owner}/{repo}..."):
+                        client.update_issue(owner, repo, issue_number, summary)
+                    console.print(f"[bold green]Successfully updated issue #{issue_number} with the generated summary.[/bold green]")
+                except Exception as update_e:
+                    console.print(f"[bold red]Error updating issue:[/bold red] {update_e}")
+
+        except ValueError as e:
+             console.print(f"[yellow]Warning: Skipping AI summary ({e})[/yellow]")
+             # Fallback to original body display if no API key
+             console.print("\n[bold]Issue Body:[/bold]")
+             if issue.body:
+                console.print(Markdown(issue.body))
+             else:
+                console.print("(No body)")
+
+
+
+    except ValueError as ve:
+        console.print(f"[bold red]Input Error:[/bold red] {ve}")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+
+if __name__ == "__main__":
+    app()

@@ -1,4 +1,4 @@
-from src.issuerizer.github import GitHubClient
+from issuerizer.github import GitHubClient
 import os
 
 # This example demonstrates how to use the GitHubClient directly.
