@@ -20,7 +20,7 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
 
     CRITICAL REQUIREMENTS:
     1. **Style**: EXTREMELY concise, dense, and objective. Avoid ALL fluff. Be telegraphic.
-    2. **Citations**: Use inline markdown links for every claim, e.g., "The proposed API changes [user1](url) were debated, with concerns raised about backward compatibility [user2](url), [user3](url)."
+    2. **Citations**: Use inline markdown links for every claim using incrementing numbers, e.g., "The proposed API changes [(1)](url) were debated, with concerns raised about backward compatibility [(2)](url), [(3)](url)."
     3. **Content**: Capture the core problem, proposed solutions, consensus (or lack thereof), and next steps.
 
     Title: {issue.title}
