@@ -22,7 +22,7 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
     1. **Style**: EXTREMELY concise, dense, and objective. Avoid ALL fluff. Be telegraphic.
     2. **Citations**: Use inline markdown links for every claim using incrementing numbers, e.g., "The proposed API changes [(1)](url) were debated, with concerns raised about backward compatibility [(2)](url), [(3)](url)."
     3. **Content**: Capture the core problem, proposed solutions, consensus (or lack thereof), and next steps.
-    4. **Focus**: Do NOT start by summarizing the issue body itself if it is empty, generic, or just a recap of the title. Jump straight into the core content/discussion.
+    4. **Focus**: Do NOT begin by stating "Issue requests..." or summarizing the title/body if it's generic. Assume the reader knows the title. START IMMEDIATELY with the *discussion*, *technical debate*, or *proposed solutions*.
 
     Title: {issue.title}
     Author: {issue.user.login}
