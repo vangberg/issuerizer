@@ -3,7 +3,7 @@ import anthropic
 from typing import Optional
 from issuerizer.github import Issue
 
-def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
+def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: bool = False) -> str:
     """
     Generates a summary of the provided GitHub issue using the Anthropic API.
     """
@@ -45,6 +45,22 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
         prompt += f"{comment.body}\\n"
 
     prompt += """
+    \nEvents:
+    """
+
+    for event in issue.events_list:
+        actor_login = event.actor.login if event.actor else "Unknown"
+        prompt += f"\n- {event.event} by {actor_login} at {event.created_at}"
+        if event.commit_id:
+             prompt += f" (commit: {event.commit_id})"
+        if event.source and event.source.issue:
+            linked = event.source.issue
+            prompt += f"\n  - Linked Issue/PR: {linked.title} (#{linked.number}) [{linked.state}]"
+            prompt += f"\n  - Link: {linked.html_url}"
+            if linked.body:
+                prompt += f"\n  - Body Snippet: {linked.body[:200]}..."
+
+    prompt += """
     \nProduce the summary in Markdown. Structure it as follows:
 
     ### Executive Summary
@@ -56,6 +72,11 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None) -> str:
     ### Action Items
     *   (Concise list of next steps or open tasks, with citations.)
     """
+
+    if verbose:
+        print("\n--- LLM Prompt ---")
+        print(prompt)
+        print("------------------\n")
 
     message = client.messages.create(
         model="claude-sonnet-4-5-20250929",

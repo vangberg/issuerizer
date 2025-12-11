@@ -17,6 +17,27 @@ class Comment(BaseModel):
     html_url: str
     created_at: str
 
+class SimpleIssue(BaseModel):
+    number: int
+    title: str
+    html_url: str
+    state: str
+    body: Optional[str] = None
+    user: Optional[User] = None
+    repository_url: Optional[str] = None
+
+class EventSource(BaseModel):
+    type: Optional[str] = None
+    issue: Optional[SimpleIssue] = None
+
+class Event(BaseModel):
+    id: int
+    event: str
+    actor: Optional[User] = None
+    created_at: str
+    commit_id: Optional[str] = None
+    source: Optional[EventSource] = None
+
 class Issue(BaseModel):
     id: int
     number: int
@@ -28,7 +49,9 @@ class Issue(BaseModel):
     updated_at: Optional[str] = None
     body: Optional[str] = None
     comments_url: str
+    events_url: str
     comments_list: List[Comment] = []
+    events_list: List[Event] = []
 
 class GitHubClient:
     def __init__(self, token: Optional[str] = None):
@@ -56,11 +79,21 @@ class GitHubClient:
             
             # Parse comments
             comments = [Comment(**c) for c in comments_data]
+
+            # Fetch events
+            events_url = issue_data["events_url"]
+            events_resp = client.get(events_url, headers=self.headers)
+            events_resp.raise_for_status()
+            events_data = events_resp.json()
+            
+            # Parse events
+            events = [Event(**e) for e in events_data]
             
             # Create Issue object
             issue = Issue(
                 **issue_data,
-                comments_list=comments
+                comments_list=comments,
+                events_list=events
             )
             
             return issue
@@ -123,10 +156,23 @@ if __name__ == "__main__":
         print(f"Author: {issue_obj.user.login}")
         print(f"State: {issue_obj.state}")
         print(f"Comments: {len(issue_obj.comments_list)}")
+        print(f"Events: {len(issue_obj.events_list)}")
         
         if issue_obj.comments_list:
             first_comment = issue_obj.comments_list[0]
             print(f"First comment by {first_comment.user.login}: {first_comment.body[:50]}...")
+
+        if issue_obj.events_list:
+            first_event = issue_obj.events_list[0]
+            print(f"First event: {first_event.event} by {first_event.actor.login if first_event.actor else 'Unknown'} at {first_event.created_at}")
+            
+            # Print linked issues from events
+            print("\nLinked Issues/PRs from events:")
+            for event in issue_obj.events_list:
+                if event.source and event.source.issue:
+                    linked = event.source.issue
+                    print(f" - {linked.title} (#{linked.number}) [{linked.state}]")
+
             
     except Exception as e:
         print(f"An error occurred: {e}")

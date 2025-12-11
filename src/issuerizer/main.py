@@ -38,7 +38,8 @@ def parse_issue_query(query: str):
 @app.command()
 def summarize(
     issue_query: str,
-    update: bool = typer.Option(False, "--update", "-u", help="Update the GitHub issue body with the generated summary.")
+    update: bool = typer.Option(False, "--update", "-u", help="Update the GitHub issue body with the generated summary."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Print the prompt sent to the LLM.")
 ):
     """
     Fetch and summarize a GitHub issue.
@@ -59,6 +60,7 @@ def summarize(
         console.print(f"[bold blue]Created:[/bold blue] {issue.created_at}")
         console.print(f"[bold blue]Link:[/bold blue] {issue.html_url}")
         console.print(f"[bold blue]Comments:[/bold blue] {len(issue.comments_list)}")
+        console.print(f"[bold blue]Events:[/bold blue] {len(issue.events_list)}")
         if not issue.comments_list:
             console.print("[yellow]No comments found for this issue. Skipping summary generation.[/yellow]")
             return
@@ -69,7 +71,7 @@ def summarize(
         
         console.print("\n[bold]Generating Summary...[/bold]")
         try:
-            summary = get_summary(issue, readme_content)
+            summary = get_summary(issue, readme_content, verbose)
             console.print("\n[bold]--- AI Summary ---[/bold]\n")
             console.print(Markdown(summary))
 
