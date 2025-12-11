@@ -6,7 +6,9 @@ Issuerizer is a CLI tool and GitHub Action designed to provide an 'entrypoint su
 
 ## Authentication
 
-The tool requires a GitHub token to access the API.
+The tool requires a GitHub token to access the GitHub API and an Anthropic API key to generate summaries.
+
+### GitHub Token
 
 **Local Development (using GitHub CLI):**
 If you have the `gh` CLI installed and are authenticated, you can easily export your token:
@@ -20,6 +22,14 @@ Alternatively, set the variable manually in your shell or `.env` file:
 
 ```bash
 export GITHUB_TOKEN=ghp_...
+```
+
+### Anthropic API Key
+
+You need an API key from Anthropic to power the LLM summarization.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ## GitHub Actions Integration
