@@ -59,6 +59,9 @@ def summarize(
         console.print(f"[bold blue]Created:[/bold blue] {issue.created_at}")
         console.print(f"[bold blue]Link:[/bold blue] {issue.html_url}")
         console.print(f"[bold blue]Comments:[/bold blue] {len(issue.comments_list)}")
+        if not issue.comments_list:
+            console.print("[yellow]No comments found for this issue. Skipping summary generation.[/yellow]")
+            return
         if readme_content:
             console.print(f"[bold blue]README:[/bold blue] Found ({len(readme_content)} chars)")
         else:
