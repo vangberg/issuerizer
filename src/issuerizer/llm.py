@@ -14,8 +14,54 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: boo
     client = anthropic.Anthropic(api_key=api_key)
 
     # Construct the prompt
-    prompt = f"""
-    You are an expert technical editor summarizing a GitHub issue discussion.
+    # Follows Anthropic's long context guidelines: Context first (in XML), then instructions.
+    prompt = "<context>\n"
+    
+    prompt += "<issue>\n"
+    prompt += f"<title>{issue.title}</title>\n"
+    prompt += f"<author>{issue.user.login}</author>\n"
+    prompt += f"<state>{issue.state}</state>\n"
+    prompt += f"<created_at>{issue.created_at}</created_at>\n"
+    prompt += f"<body>\n{issue.body or '(No body)'}\n</body>\n"
+    prompt += "</issue>\n"
+
+    if readme_content:
+        prompt += f"<project_readme>\n{readme_content[:10000]}... (truncated if too long)\n</project_readme>\n"
+
+    if issue.comments_list:
+        prompt += "<comments>\n"
+        for comment in issue.comments_list:
+            prompt += f"<comment>\n"
+            prompt += f"<author>{comment.user.login}</author>\n"
+            prompt += f"<date>{comment.created_at}</date>\n"
+            prompt += f"<url>{comment.html_url}</url>\n"
+            prompt += f"<body>\n{comment.body}\n</body>\n"
+            prompt += "</comment>\n"
+        prompt += "</comments>\n"
+
+    if issue.events_list:
+        prompt += "<events>\n"
+        for event in issue.events_list:
+            actor_login = event.actor.login if event.actor else "Unknown"
+            prompt += f"<event type='{event.event}' actor='{actor_login}' date='{event.created_at}'"
+            if event.commit_id:
+                 prompt += f" commit_id='{event.commit_id}'"
+            prompt += ">\n"
+            if event.source and event.source.issue:
+                linked = event.source.issue
+                prompt += f"  <linked_issue state='{linked.state}' number='{linked.number}'>\n"
+                prompt += f"    <title>{linked.title}</title>\n"
+                prompt += f"    <url>{linked.html_url}</url>\n"
+                if linked.body:
+                    prompt += f"    <body>{linked.body[:200]}...</body>\n"
+                prompt += "  </linked_issue>\n"
+            prompt += "</event>\n"
+        prompt += "</events>\n"
+
+    prompt += "</context>\n\n"
+
+    prompt += """
+    You are an expert technical editor summarizing a GitHub issue discussion based on the context provided above.
     Produce a succinct, academic-style review of the conversation.
 
     CRITICAL REQUIREMENTS:
@@ -24,44 +70,7 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: boo
     3. **Content**: Capture the core problem, proposed solutions, consensus (or lack thereof), and next steps.
     4. **Focus**: Do NOT begin by stating "Issue requests..." or summarizing the title/body if it's generic. Assume the reader knows the title. START IMMEDIATELY with the *discussion*, *technical debate*, or *proposed solutions*.
 
-    Title: {issue.title}
-    Author: {issue.user.login}
-    State: {issue.state}
-    Created At: {issue.created_at}
-    
-    Issue Body:
-    {issue.body or "(No body)"}
-    """
-
-    if readme_content:
-        prompt += f"\n\nProject README:\n{readme_content[:10000]}... (truncated if too long)\n"
-
-    prompt += """
-    \nComments:
-    """
-    
-    for comment in issue.comments_list:
-        prompt += f"\n--- Comment by {comment.user.login} at {comment.created_at} (URL: {comment.html_url}) ---\\n"
-        prompt += f"{comment.body}\\n"
-
-    prompt += """
-    \nEvents:
-    """
-
-    for event in issue.events_list:
-        actor_login = event.actor.login if event.actor else "Unknown"
-        prompt += f"\n- {event.event} by {actor_login} at {event.created_at}"
-        if event.commit_id:
-             prompt += f" (commit: {event.commit_id})"
-        if event.source and event.source.issue:
-            linked = event.source.issue
-            prompt += f"\n  - Linked Issue/PR: {linked.title} (#{linked.number}) [{linked.state}]"
-            prompt += f"\n  - Link: {linked.html_url}"
-            if linked.body:
-                prompt += f"\n  - Body Snippet: {linked.body[:200]}..."
-
-    prompt += """
-    \nProduce the summary in Markdown. Structure it as follows:
+    Produce the summary in Markdown. Structure it as follows:
 
     ### Executive Summary
     (Maximum 2-3 sentences. Ultra-dense summary of the issue, key debates, and current status, heavily cited.)
