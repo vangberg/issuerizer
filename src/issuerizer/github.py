@@ -25,6 +25,7 @@ class SimpleIssue(BaseModel):
     body: Optional[str] = None
     user: Optional[User] = None
     repository_url: Optional[str] = None
+    pull_request: Optional[dict] = None
 
 class EventSource(BaseModel):
     type: Optional[str] = None
@@ -59,11 +60,35 @@ class GitHubClient:
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.getenv("GITHUB_TOKEN")
         self.headers = {
-            "Accept": "application/vnd.github.v3+json",
+            "Accept": "application/vnd.github.sub-issues+json",
             "User-Agent": "issuerizer-cli"
         }
         if self.token:
             self.headers["Authorization"] = f"token {self.token}"
+
+    def _get_all_pages(self, url: str, client: httpx.Client) -> List[dict]:
+        all_items = []
+        while url:
+            resp = client.get(url, headers=self.headers)
+            resp.raise_for_status()
+            items = resp.json()
+            if isinstance(items, list):
+                all_items.extend(items)
+            else:
+                # Should not happen for list endpoints, but safety first
+                break
+            
+            # Check for next page
+            url = None
+            if "link" in resp.headers: # Header keys are case-insensitive, httpx lowercases them?
+                # httpx headers are case-insensitive.
+                links = resp.headers["link"].split(", ")
+                for link in links:
+                    if 'rel="next"' in link:
+                        # Extract URL from <url>; rel="next"
+                        url = link.split(";")[0].strip("<>")
+                        break
+        return all_items
 
     def get_issue(self, owner: str, repo: str, issue_number: int) -> Issue:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
@@ -75,26 +100,21 @@ class GitHubClient:
             
             # Fetch comments
             comments_url = issue_data["comments_url"]
-            comments_resp = client.get(comments_url, headers=self.headers)
-            comments_resp.raise_for_status()
-            comments_data = comments_resp.json()
+            # For comments, we might also want pagination, but let's stick to events for now as per request.
+            # But wait, large discussions might miss comments too. Let's do it for comments as well.
+            comments_data = self._get_all_pages(comments_url, client)
             
             # Parse comments
             comments = [Comment(**c) for c in comments_data]
 
             # Fetch events
             events_url = issue_data["events_url"]
-            events_resp = client.get(events_url, headers=self.headers)
-            events_resp.raise_for_status()
-            events_data = events_resp.json()
+            events_data = self._get_all_pages(events_url, client)
             
             # Parse events
             events = [Event(**e) for e in events_data]
 
             # Fetch sub-issues (if any)
-            # Try to fetch sub-issues blindly or check for sub_issues_summary in issue_data
-            # For robustness, we check if the field exists, but since we know the endpoint works,
-            # we can just try to fetch them.
             sub_issues = []
             if "sub_issues_summary" in issue_data and issue_data["sub_issues_summary"]["total"] > 0:
                 sub_issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
@@ -106,12 +126,28 @@ class GitHubClient:
                 except Exception as e:
                     print(f"Warning: Failed to fetch sub-issues: {e}")
 
+            # Handle parent issue
+            parent_obj = None
+            if "parent" in issue_data:
+                # If parent is already in the response, we use it (Pydantic can handle dict, but let's be explicit)
+                parent_obj = SimpleIssue(**issue_data["parent"])
+                del issue_data["parent"] # Remove to avoid collision
+            elif issue_data.get("parent_issue_url"):
+                # If only URL is present, fetch the parent
+                try:
+                    p_resp = client.get(issue_data["parent_issue_url"], headers=self.headers)
+                    if p_resp.status_code == 200:
+                        parent_obj = SimpleIssue(**p_resp.json())
+                except Exception as e:
+                    print(f"Warning: Failed to fetch parent issue: {e}")
+
             # Create Issue object
             issue = Issue(
                 **issue_data,
                 comments_list=comments,
                 events_list=events,
-                sub_issues_list=sub_issues
+                sub_issues_list=sub_issues,
+                parent=parent_obj
             )
             
             return issue

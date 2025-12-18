@@ -60,7 +60,8 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: boo
             prompt += ">\n"
             if event.source and event.source.issue:
                 linked = event.source.issue
-                prompt += f"  <linked_issue state='{linked.state}' number='{linked.number}'>\n"
+                linked_type = "pull_request" if linked.pull_request is not None else "issue"
+                prompt += f"  <linked_issue type='{linked_type}' state='{linked.state}' number='{linked.number}'>\n"
                 prompt += f"    <title>{linked.title}</title>\n"
                 prompt += f"    <url>{linked.html_url}</url>\n"
                 if linked.body:
