@@ -52,6 +52,7 @@ class Issue(BaseModel):
     events_url: str
     comments_list: List[Comment] = []
     events_list: List[Event] = []
+    sub_issues_list: List[SimpleIssue] = []
 
 class GitHubClient:
     def __init__(self, token: Optional[str] = None):
@@ -88,12 +89,28 @@ class GitHubClient:
             
             # Parse events
             events = [Event(**e) for e in events_data]
-            
+
+            # Fetch sub-issues (if any)
+            # Try to fetch sub-issues blindly or check for sub_issues_summary in issue_data
+            # For robustness, we check if the field exists, but since we know the endpoint works,
+            # we can just try to fetch them.
+            sub_issues = []
+            if "sub_issues_summary" in issue_data and issue_data["sub_issues_summary"]["total"] > 0:
+                sub_issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
+                try:
+                    sub_resp = client.get(sub_issues_url, headers=self.headers)
+                    if sub_resp.status_code == 200:
+                        sub_data = sub_resp.json()
+                        sub_issues = [SimpleIssue(**s) for s in sub_data]
+                except Exception as e:
+                    print(f"Warning: Failed to fetch sub-issues: {e}")
+
             # Create Issue object
             issue = Issue(
                 **issue_data,
                 comments_list=comments,
-                events_list=events
+                events_list=events,
+                sub_issues_list=sub_issues
             )
             
             return issue

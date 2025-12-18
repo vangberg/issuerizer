@@ -28,6 +28,17 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: boo
     if readme_content:
         prompt += f"<project_readme>\n{readme_content[:10000]}... (truncated if too long)\n</project_readme>\n"
 
+    if issue.sub_issues_list:
+        prompt += "<sub_issues>\n"
+        for sub in issue.sub_issues_list:
+            prompt += f"<sub_issue state='{sub.state}' number='{sub.number}'>\n"
+            prompt += f"  <title>{sub.title}</title>\n"
+            prompt += f"  <url>{sub.html_url}</url>\n"
+            if sub.body:
+                prompt += f"  <body>\n{sub.body}\n</body>\n"
+            prompt += "</sub_issue>\n"
+        prompt += "</sub_issues>\n"
+
     if issue.comments_list:
         prompt += "<comments>\n"
         for comment in issue.comments_list:
@@ -53,7 +64,7 @@ def get_summary(issue: Issue, readme_content: Optional[str] = None, verbose: boo
                 prompt += f"    <title>{linked.title}</title>\n"
                 prompt += f"    <url>{linked.html_url}</url>\n"
                 if linked.body:
-                    prompt += f"    <body>{linked.body[:200]}...</body>\n"
+                    prompt += f"    <body>{linked.body}</body>\n"
                 prompt += "  </linked_issue>\n"
             prompt += "</event>\n"
         prompt += "</events>\n"
