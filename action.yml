@@ -12,7 +12,7 @@ inputs:
     required: false
     default: 'false'
   update-parent:
-    description: 'Set to "true" to find and summarize the parent of the provided issue.'
+    description: 'Set to "true" to ALSO find and summarize the parent of the provided issue.'
     required: false
     default: 'false'
   anthropic-api-key:
@@ -44,7 +44,13 @@ runs:
         if [ "${{ inputs.update }}" == "true" ]; then
           ARGS="$ARGS --update"
         fi
-        if [ "${{ inputs.update-parent }}" == "true" ]; then
-          ARGS="$ARGS --update-parent"
-        fi
+        
+        echo "::group::Summarizing Issue"
         issuerizer summarize "${{ inputs.issue-query }}" $ARGS
+        echo "::endgroup::"
+
+        if [ "${{ inputs.update-parent }}" == "true" ]; then
+          echo "::group::Summarizing Parent Issue"
+          issuerizer summarize "${{ inputs.issue-query }}" $ARGS --update-parent
+          echo "::endgroup::"
+        fi
