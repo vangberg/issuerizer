@@ -32,7 +32,7 @@ class EventSource(BaseModel):
     issue: Optional[SimpleIssue] = None
 
 class Event(BaseModel):
-    id: int
+    id: Optional[int] = None
     event: str
     actor: Optional[User] = None
     created_at: str
@@ -107,12 +107,17 @@ class GitHubClient:
             # Parse comments
             comments = [Comment(**c) for c in comments_data]
 
-            # Fetch events
-            events_url = issue_data["events_url"]
+            # Fetch events from timeline to get cross-references etc.
+            # Prefer timeline_url if available, otherwise construct it or fall back to events_url
+            events_url = issue_data.get("timeline_url")
+            if not events_url:
+                 # Fallback to events if timeline not present (though it should be for issues)
+                 events_url = issue_data["events_url"]
+            
             events_data = self._get_all_pages(events_url, client)
             
-            # Parse events
-            events = [Event(**e) for e in events_data]
+            # Parse events, excluding 'commented' to avoid duplication with comments_list
+            events = [Event(**e) for e in events_data if e.get("event") != "commented"]
 
             # Fetch sub-issues (if any)
             sub_issues = []
