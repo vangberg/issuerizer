@@ -11,6 +11,10 @@ inputs:
     description: 'Set to "true" to automatically update the issue body with the generated summary.'
     required: false
     default: 'false'
+  update-parent:
+    description: 'Set to "true" to find and summarize the parent of the provided issue.'
+    required: false
+    default: 'false'
   anthropic-api-key:
     description: 'Your Anthropic API Key.'
     required: true
@@ -38,6 +42,9 @@ runs:
       run: |
         ARGS=""
         if [ "${{ inputs.update }}" == "true" ]; then
-          ARGS="--update"
+          ARGS="$ARGS --update"
         fi
-        issuerizer "${{ inputs.issue-query }}" $ARGS
+        if [ "${{ inputs.update-parent }}" == "true" ]; then
+          ARGS="$ARGS --update-parent"
+        fi
+        issuerizer summarize "${{ inputs.issue-query }}" $ARGS

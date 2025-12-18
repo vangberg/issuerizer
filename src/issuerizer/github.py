@@ -53,6 +53,7 @@ class Issue(BaseModel):
     comments_list: List[Comment] = []
     events_list: List[Event] = []
     sub_issues_list: List[SimpleIssue] = []
+    parent: Optional[SimpleIssue] = None
 
 class GitHubClient:
     def __init__(self, token: Optional[str] = None):
