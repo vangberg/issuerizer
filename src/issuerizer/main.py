@@ -11,6 +11,13 @@ from issuerizer.llm import get_summary
 app = typer.Typer()
 console = Console()
 
+@app.callback()
+def main():
+    """
+    Issuerizer: AI-powered GitHub issue summarization.
+    """
+    pass
+
 def parse_issue_query(query: str):
     """
     Parses a GitHub issue URL or shorthand string (owner/repo#number).
